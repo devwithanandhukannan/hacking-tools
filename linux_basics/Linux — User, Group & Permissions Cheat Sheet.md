@@ -159,7 +159,7 @@ chmod +t dir        # sticky bit (only owner/root can delete in dir)
 
 ### Sticky Bit Example
 
-#### Add Sticky Bit
+#### Add Sticky Bit (for this add letter 4) example normal user can change the password how? because it not access the /shadow file this is done by passwd command have a special permission to setup sudo to change the shadow file
 
 ```bash
 sudo chmod +t /shared_folder
