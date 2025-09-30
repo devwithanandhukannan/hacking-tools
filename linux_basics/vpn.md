@@ -9,7 +9,7 @@
   - [Method 2: VPNBook](#method-2-vpnbook)
 - [Verification](#verification)
 
----
+
 
 ## Understanding VPN Layers
 
@@ -23,11 +23,11 @@
   - Works with all protocols (TCP/UDP/ICMP)
 
 **IPSec Example:**
-```
+
 [Your Device] → IPSec Tunnel → [VPN Server] → [Internet]
      ↓
 Encrypts at IP layer (Layer 3)
-```
+
 
 ### Application Layer VPNs (Layer 7)
 - **Protocols**: OpenVPN, SSL/TLS VPN, SOCKS proxy
