@@ -1,465 +1,243 @@
-```markdown
-# VPN Setup Guide for Kali Linux - Pentesting Edition
+# How to install VPN in Kali
 
-## Table of Contents
-- [Understanding VPN Layers](#understanding-vpn-layers)
-- [Free VPNs for Pentesting](#free-vpns-for-pentesting)
-- [Installation Methods](#installation-methods)
-  - [Method 1: ProtonVPN](#method-1-protonvpn)
-  - [Method 2: VPNBook](#method-2-vpnbook)
-- [Verification](#verification)
-
-
-
-## Understanding VPN Layers
-
-### Network Layer VPNs (Layer 3)
-- **Protocols**: IPSec, WireGuard, PPTP
-- **How it works**: Operates at the IP layer, encrypts entire packets
-- **Characteristics**:
-  - Encrypts all traffic at network level
-  - More transparent to applications
-  - Better performance
-  - Works with all protocols (TCP/UDP/ICMP)
-
-**IPSec Example:**
-
-[Your Device] → IPSec Tunnel → [VPN Server] → [Internet]
-     ↓
-Encrypts at IP layer (Layer 3)
-
-
-### Application Layer VPNs (Layer 7)
-- **Protocols**: OpenVPN, SSL/TLS VPN, SOCKS proxy
-- **How it works**: Operates at application layer using SSL/TLS
-- **Characteristics**:
-  - More flexible and configurable
-  - Can bypass restrictive firewalls
-  - Works on standard ports (443, 80)
-  - Slightly more overhead
-
-**OpenVPN Example:**
-```
-[Your Device] → SSL/TLS Tunnel → [VPN Server] → [Internet]
-     ↓
-Encrypts at application layer (Layer 7)
-```
+> Complete notes: application-layer vs network-layer VPNs, step-by-step installation for ProtonVPN and VPNBook (OpenVPN), quick notes on IPSec, Tor, and proxychains on Kali Linux.
 
 ---
 
-## Free VPNs for Pentesting
+## Overview: Application layer vs Network layer VPN
 
-### ✅ Recommended Free Options
+* **Application-layer VPN** (also called proxy/VPN per-application): encrypts traffic for a specific application only (for example, a browser or an SSH client). You configure the app to use a local proxy or a VPN client that supports selective routing. This is useful when you only want certain apps to go through the VPN.
 
-| VPN Service | Protocol | Data Limit | Speed | Logs | Pentesting Friendly |
-|-------------|----------|------------|-------|------|---------------------|
-| **ProtonVPN** | OpenVPN, IKEv2 | Unlimited | Medium | No logs | ✅ Yes |
-| **VPNBook** | OpenVPN | Unlimited | Good | Minimal | ✅ Yes |
-| **Hide.me** | OpenVPN, IKEv2 | 10GB/month | Good | No logs | ✅ Yes |
-| **Windscribe** | OpenVPN, IKEv2 | 10GB/month | Good | Minimal | ⚠️ Limited |
-
-### ⚠️ Important Notes for Pentesting:
-- Always get **written permission** before pentesting
-- Free VPNs may keep some logs
-- Consider using multiple VPN chains for anonymity
-- Test for DNS leaks after connection
+* **Network-layer VPN** (system-wide): routes traffic at the OS/network stack level so every application and service uses the VPN tunnel (unless split-tunnelling rules are used). Common implementations: OpenVPN, WireGuard, IPSec. This is ideal for full-machine anonymity or connecting to remote networks.
 
 ---
 
-## Installation Methods
+## Prerequisites (Kali Linux)
 
-### Prerequisites
+* A working internet connection.
+* Root or sudo privileges.
+* `apt` package manager (Kali base).
+* Recommended: update system before starting:
+
 ```bash
-# Update system
 sudo apt update && sudo apt upgrade -y
+```
 
-# Install OpenVPN
-sudo apt install openvpn -y
+---
 
-# Install network-manager-openvpn for GUI
-sudo apt install network-manager-openvpn network-manager-openvpn-gnome -y
+## 1) ProtonVPN (general steps)
 
-# Restart NetworkManager
+**Install ProtonVPN client (official) or use OpenVPN configs from Proton to import**
+
+### A. Using ProtonVPN Linux CLI (recommended for convenience)
+
+1. Install dependencies and the ProtonVPN repository (follow Proton's latest instructions). Example common commands:
+
+```bash
+sudo apt install -y gnupg2 wget
+# add Proton's repo (example; always check ProtonVPN docs for latest repo and commands)
+wget -q -O - https://repo.protonvpn.com/debian/public_key.asc | sudo apt-key add -
+sudo add-apt-repository 'deb https://repo.protonvpn.com/debian stable main'
+sudo apt update
+sudo apt install -y protonvpn
+```
+
+2. Initialize and login:
+
+```bash
+sudo protonvpn-cli login <your-email>
+sudo protonvpn-cli connect # or use 'protonvpn-cli connect --sc' for secure core etc.
+```
+
+> **Note:** The ProtonVPN GUI or CLI may show a **Download** or **Configuration** section on the web dashboard where you can export OpenVPN configuration files if you prefer `openvpn`.
+
+### B. Using ProtonVPN OpenVPN configs (manual import)
+
+1. On the ProtonVPN web dashboard click **Download** (left menu) and generate OpenVPN configuration files for the server you want.
+2. Save the generated `.ovpn` file.
+3. In Kali's topbar: **Network** (or Ethernet) → **VPN Connections** → **Configure VPN** → **Add** → **Import a saved VPN configuration** and select the `.ovpn` file.
+4. Or use the terminal:
+
+```bash
+sudo apt install -y openvpn
+sudo openvpn --config /path/to/protonvpn-server.ovpn
+```
+
+5. GUI import will create a NetworkManager connection. Use the topbar network menu to connect/disconnect.
+
+---
+
+## 2) VPNBook (OpenVPN)
+
+VPNBook provides free OpenVPN configs (username/password-based).
+
+### Steps:
+
+1. Download the OpenVPN ZIP from VPNBook website and unzip it:
+
+```bash
+wget https://www.vpnbook.com/free-openvpn-account/VPNBook.com-OpenVPN-Euro1.zip -O vpnbook-euro.zip
+unzip vpnbook-euro.zip -d vpnbook-configs
+```
+
+2. Inside the extracted folder you will find `.ovpn` files, e.g. `vpnbjlok-ca196-tcp80.ovpn` (filename will vary).
+
+3. Bring up the VPN using OpenVPN in terminal:
+
+```bash
+sudo apt install -y openvpn
+sudo openvpn vpnbook-configs/vpnbjlok-ca196-tcp80.ovpn
+```
+
+4. OpenVPN will prompt for **username** and **password** — use the credentials listed on VPNBook's web page (they rotate/change frequently). Keep these credentials handy.
+
+5. To run in the background use systemd or run `openvpn --daemon --config <file>`.
+
+6. To use NetworkManager GUI: import the `.ovpn` file as described in ProtonVPN step.
+
+---
+
+## 3) IPSec (network layer)
+
+* IPSec operates at the network layer (L3) and is commonly used for site-to-site VPNs and some client-to-server VPNs (e.g., strongSwan, libreswan).
+
+### Quick strongSwan example (install):
+
+```bash
+sudo apt update
+sudo apt install -y strongswan strongswan-plugin-eap-mschapv2
+```
+
+Configuration for IPSec (client) typically lives in `/etc/ipsec.conf` and secrets in `/etc/ipsec.secrets`. IPSec setups can be more involved (certificates, PSK, IKEv2 settings).
+
+---
+
+## 4) Tor and proxychains (anonymity layer, not a VPN)
+
+Tor is a circuit-based anonymity network. It is not a VPN but can provide application-level anonymity when used with proxychains.
+
+### Install Tor service
+
+```bash
+sudo apt update
+sudo apt install -y tor
+sudo systemctl enable --now tor    # starts tor and enables at boot
+sudo systemctl start tor           # start
+sudo systemctl stop tor            # stop
+```
+
+Tor's default SOCKS proxy listens on `127.0.0.1:9050`.
+
+### Install proxychains4
+
+```bash
+sudo apt install -y proxychains4
+```
+
+### proxychains4: config and usage
+
+* Configuration file: `/etc/proxychains4.conf` (or `~/.proxychains/proxychains.conf`).
+* Example excerpt (tail) that ensures Tor is the default proxy:
+
+```text
+# proxy types: http, socks4, socks5, raw
+# * raw: The traffic is simply forwarded to the proxy without additional framing
+
+[ProxyList]
+# add proxy here ...
+# defaults set to "tor"
+socks4 127.0.0.1 9050
+# (auth types supported: "basic" - http, "user/pass" - socks)
+```
+
+* To run a command through proxychains (prefix the command):
+
+```bash
+proxychains4 curl http://ifconfig.me
+# or
+proxychains4 nmap -sT <target>
+```
+
+> **Note:** Not all traffic/ports/protocols work reliably through proxychains/Tor. DNS leaks and UDP are common caveats.
+
+---
+
+## What is a proxy and why use one?
+
+* A **proxy** is an intermediary between your application and the destination server. Types: HTTP proxy, SOCKS4/SOCKS5.
+
+* **Why use a proxy?**
+
+  * Route traffic through another host (location masking).
+  * Add an anonymity layer (when combined with Tor or other proxies).
+  * Apply per-application routing (instead of full-machine VPN).
+
+* Example: `socks4 127.0.0.1 9050` means: use SOCKS4 proxy on localhost port 9050 (Tor's default).
+
+---
+
+## Handy commands & tips
+
+* Install OpenVPN and network-manager plugin for GUI support:
+
+```bash
+sudo apt install -y openvpn network-manager-openvpn network-manager-openvpn-gnome
 sudo systemctl restart NetworkManager
 ```
 
----
+* To import a `.ovpn` via GUI: Topbar → Network → VPN Connections → Configure VPN → Add → Import from file → select `.ovpn`.
 
-## Method 1: ProtonVPN
+* Run OpenVPN from terminal (better for logs):
 
-### Step-by-Step Setup
-
-#### 1. Download Configuration Files
 ```bash
-# Visit ProtonVPN website
-https://account.protonvpn.com/downloads
-
-# Or use CLI
-wget https://account.protonvpn.com/api/vpn/config?platform=linux
+sudo openvpn --config /path/to/file.ovpn
 ```
 
-#### 2. GUI Method (Easy)
-1. **Click** on the network icon in the top bar
-2. Navigate to: **VPN Connections** → **Add a VPN connection**
-3. Select: **Import a saved VPN configuration**
-4. Browse to your downloaded `.ovpn` file
-5. **Enter credentials**:
-   - Username: Your ProtonVPN username
-   - Password: Your ProtonVPN password
-6. Click **Add**
+* If OpenVPN asks for username/password, provide as prompted or create a `credentials.txt` with two lines (username on first, password on second) and reference it in the `.ovpn` with:
 
-#### 3. Terminal Method (Advanced)
-```bash
-# Navigate to config directory
-cd ~/Downloads/protonvpn-configs
-
-# Connect using OpenVPN
-sudo openvpn --config <server-name>.ovpn
-
-# Example:
-sudo openvpn --config us-free-01.protonvpn.udp.ovpn
+```text
+auth-user-pass credentials.txt
 ```
 
-#### 4. Save Credentials (Optional)
-Create an auth file to avoid typing credentials:
+* To test IP after connecting:
+
 ```bash
-# Create auth file
-nano ~/vpn-auth.txt
-
-# Add credentials (2 lines):
-your-username
-your-password
-
-# Secure the file
-chmod 600 ~/vpn-auth.txt
-
-# Connect with saved auth
-sudo openvpn --config server.ovpn --auth-user-pass ~/vpn-auth.txt
-```
-
----
-
-## Method 2: VPNBook
-
-### Step-by-Step Setup
-
-#### 1. Download Configuration Files
-```bash
-# Visit VPNBook
-https://www.vpnbook.com/
-
-# Navigate to OpenVPN section
-# Download the OpenVPN configuration bundle
-wget https://www.vpnbook.com/free-openvpn-account/VPNBook.com-OpenVPN-US1.zip
-
-# Unzip the files
-unzip VPNBook.com-OpenVPN-US1.zip
-```
-
-#### 2. Check Credentials on Website
-- Go to https://www.vpnbook.com/
-- **Username** and **Password** are displayed on the homepage
-- **Note**: Passwords change periodically (check website)
-
-#### 3. Import Configuration
-```bash
-# List available configs
-ls *.ovpn
-
-# Example output:
-# vpnbook-us1-tcp443.ovpn
-# vpnbook-us1-tcp80.ovpn
-# vpnbook-us1-udp53.ovpn
-```
-
-#### 4. GUI Import
-1. **Top bar** → **Network icon** → **VPN Connections**
-2. Click **Add a VPN connection** → **Import from file**
-3. Select the `.ovpn` file (e.g., `vpnbook-us1-tcp443.ovpn`)
-4. Enter credentials from VPNBook website:
-   - Username: `vpnbook`
-   - Password: (from website)
-5. Click **Save**
-
-#### 5. Terminal Method
-```bash
-# Connect directly
-sudo openvpn --config vpnbook-us1-tcp443.ovpn
-
-# When prompted, enter:
-# Username: vpnbook
-# Password: (from website)
-```
-
----
-
-## Method 3: Hide.me (Bonus)
-
-### Quick Setup
-```bash
-# Download config
-wget https://hide.me/downloads/hide.me-OpenVPN-configs.zip
-
-# Extract
-unzip hide.me-OpenVPN-configs.zip
-
-# Import via GUI or connect via terminal
-sudo openvpn --config hide.me-<location>.ovpn
-```
-
----
-
-## Additional Free VPN Options
-
-### 1. **Windscribe**
-```bash
-# Install Windscribe CLI
-wget https://windscribe.com/install/desktop/linux_deb_x64
-sudo dpkg -i windscribe*.deb
-
-# Login and connect
-windscribe login
-windscribe connect
-```
-
-### 2. **TunnelBear** (Limited but reliable)
-- 500MB/month free
-- Good for quick tests
-- Available via website config download
-
-### 3. **Riseup VPN** (Privacy-focused)
-```bash
-# Install
-sudo apt install riseup-vpn
-
-# Run
-riseup-vpn
-```
-
----
-
-## Network Layer Protocols Explained
-
-### IPSec (Internet Protocol Security)
-- **Layer**: Network Layer (Layer 3)
-- **Components**:
-  - **AH (Authentication Header)**: Provides integrity and authentication
-  - **ESP (Encapsulating Security Payload)**: Provides encryption
-  
-```bash
-# Check IPSec status
-sudo ipsec status
-
-# Install strongSwan for IPSec
-sudo apt install strongswan -y
-```
-
-### WireGuard (Modern Network Layer VPN)
-```bash
-# Install WireGuard
-sudo apt install wireguard -y
-
-# Example configuration
-sudo nano /etc/wireguard/wg0.conf
-
-# Connect
-sudo wg-quick up wg0
-```
-
----
-
-## Verification & Testing
-
-### Check Your IP
-```bash
-# Before VPN
 curl ifconfig.me
-
-# After VPN (should show different IP)
-curl ifconfig.me
+# or
+curl https://ipinfo.io/ip
 ```
 
-### Check DNS Leaks
-```bash
-# Check DNS servers being used
-nmcli dev show | grep DNS
-
-# Online test
-curl https://www.dnsleaktest.com/
-```
-
-### Verify VPN Connection
-```bash
-# Check active connections
-ip a | grep tun
-
-# Check routing table
-ip route
-
-# Monitor OpenVPN
-sudo journalctl -u openvpn -f
-```
-
-### Kill Switch (Prevent IP Leaks)
-```bash
-# Create simple iptables kill switch
-sudo iptables -A OUTPUT -o tun0 -j ACCEPT
-sudo iptables -A OUTPUT -d <VPN_SERVER_IP> -j ACCEPT
-sudo iptables -A OUTPUT -j DROP
-```
-
----
-
-## Pentesting Considerations
-
-### Best Practices
-1. **Chain VPNs**: Use multiple VPNs for enhanced anonymity
-2. **Use Tor + VPN**: Extra layer (VPN → Tor or Tor → VPN)
-3. **Check for leaks**: DNS, WebRTC, IPv6 leaks
-4. **Rotating IPs**: Switch servers frequently
-5. **Use kill switch**: Prevent accidental exposure
-
-### Testing VPN Stability
-```bash
-# Continuous ping to check stability
-ping -c 100 8.8.8.8
-
-# MTU testing
-ping -M do -s 1472 google.com
-```
-
-### Pentesting Tools with VPN
-```bash
-# All traffic through VPN
-nmap -sV <target>
-nikto -h <target>
-sqlmap -u <url>
-
-# ProxyChains for additional anonymity
-proxychains nmap <target>
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Problem**: VPN won't connect
-```bash
-# Check logs
-sudo journalctl -xe | grep -i vpn
-
-# Restart NetworkManager
-sudo systemctl restart NetworkManager
-```
-
-**Problem**: DNS not resolving
-```bash
-# Edit resolv.conf
-sudo nano /etc/resolv.conf
-
-# Add OpenDNS
-nameserver 208.67.222.222
-nameserver 208.67.220.220
-```
-
-**Problem**: Slow speeds
-- Try UDP instead of TCP protocols
-- Switch to closer servers
-- Check MTU settings
-
----
-
-## Quick Reference Commands
+* To see active network-manager VPN connections:
 
 ```bash
-# Connect OpenVPN
-sudo openvpn --config <file>.ovpn
-
-# Disconnect (Ctrl+C or)
-sudo killall openvpn
-
-# List active VPN connections
 nmcli connection show --active
-
-# Connect via NetworkManager
-nmcli connection up <vpn-name>
-
-# Disconnect via NetworkManager
-nmcli connection down <vpn-name>
-
-# Check public IP
-curl ifconfig.me
-
-# Full leak test
-curl -s https://ipleak.net/json/
 ```
 
 ---
 
-## Security Warning ⚠️
+## Security and privacy notes
 
-**Remember:**
-- Free VPNs have limitations
-- Not all VPNs allow pentesting
-- Always read Terms of Service
-- Get proper authorization before testing
-- Consider paid VPN for serious work
-- Free VPNs may log data
+* Free VPNs (like VPNBook) may log or throttle traffic. Read their privacy policy.
+* ProtonVPN has a no-logs policy (verify current policy on Proton's site).
+* Tor provides strong anonymity but is not a drop-in replacement for a VPN — it has different threat models and performance characteristics.
+* Always verify the authenticity of downloaded config files (signature or HTTPS), and avoid using untrusted VPN providers for sensitive activities.
 
 ---
 
-## Summary
+## Quick troubleshooting
 
-| Feature | ProtonVPN | VPNBook | Hide.me |
-|---------|-----------|---------|---------|
-| **Data Limit** | Unlimited | Unlimited | 10GB/month |
-| **Speed** | Medium | Good | Good |
-| **Servers** | 3 free | 6 servers | Limited |
-| **Logs** | No logs | Minimal | No logs |
-| **Setup Difficulty** | Easy | Easy | Easy |
-| **Best For** | Daily use | Testing | Quick tasks |
+* **OpenVPN: TLS handshake error** → Check credentials, server status, and that ports are not blocked (TCP/UDP as required).
+* **No internet after connect** → check routing table (`ip route`), DNS settings, and `resolv.conf`.
+* **DNS leaks** → use DNS over VPN or configure `/etc/resolv.conf` via NetworkManager to use secure DNS.
 
 ---
 
-**Happy & Ethical Pentesting! 🔒🐧**
-```
+## Further reading & next steps
+
+* ProtonVPN docs (for CLI and OpenVPN exports).
+* OpenVPN manual and `man openvpn`.
+* strongSwan documentation for IPSec/IKEv2.
+* Tor Project documentation and `proxychains4` usage notes.
 
 ---
 
-## How to Save This as a Markdown File
-
-### Option 1: Using Terminal
-```bash
-# Create the file
-nano vpn-setup-guide.md
-
-# Paste the content above
-# Save: Ctrl + O, Enter
-# Exit: Ctrl + X
-```
-
-### Option 2: Using Echo Command
-```bash
-cat > vpn-setup-guide.md << 'EOF'
-# Paste the entire markdown content here
-EOF
-```
-
-### Option 3: Direct Download
-Save the above content to a file named `vpn-setup-guide.md` or `README.md` and view it with:
-
-```bash
-# View in terminal
-cat vpn-setup-guide.md
-
-# View with formatting (if installed)
-mdless vpn-setup-guide.md
-
-# Convert to PDF (if pandoc installed)
-pandoc vpn-setup-guide.md -o vpn-setup-guide.pdf
-
-# Open in default markdown viewer
-xdg-open vpn-setup-guide.md
-```
