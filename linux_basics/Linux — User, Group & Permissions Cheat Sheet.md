@@ -1,218 +1,266 @@
-# Linux — User, Group & Permissions Cheat Sheet
 
-> Compact reference in **.md** format covering user accounts, group accounts, passwords, permissions, ownership, and package installation commands.
-
----
-
-## USER ACCOUNTS
-
-* UID ranges (common convention):
-
-  * `0` = `root` (superuser)
-  * `1–999` = system accounts
-  * `1000–65000` = standard (regular) user accounts
-
-### Examples / Commands
-
-```bash
-# Create users
-useradd hacker      # low-level user creation (may need additional flags)
-adduser james       # friendlier interactive user creation
-
-# View user accounts
-cat /etc/passwd     # displays user account records (username:x:UID:GID:...)
-```
-
-> **Note:** `cat` prints file contents to the terminal.
+# Linux Users & Groups Cheat Sheet
 
 ---
 
-## GROUP ACCOUNTS
+## 1. User Management
 
-### Commands
+### Add a User
+```bash
+sudo useradd username                # Basic user
+sudo useradd -m username             # With home directory
+sudo useradd -m -s /bin/bash username # With shell
+sudo useradd -u 1500 -g groupname username # With UID and primary group
+````
+
+### Set/Change Password
 
 ```bash
-# Create a group
-groupadd hr
-
-# Show groups
-cat /etc/group      # displays group records (groupname:x:GID:member1,member2,...)
-
-# Add an existing user to a group (append; -a requires -G)
-usermod -a -G <groupname> <username>
-# Example:
-usermod -a -G hr james
+sudo passwd username                 # Set password for user
+passwd                              # Change your own password
 ```
 
-### Task examples from your notes
+### Delete a User
 
 ```bash
-# Create a group named 'sales'
-groupadd sales
+sudo userdel username                # Delete user (keeps home)
+sudo userdel -r username             # Delete user and home directory
+```
 
-# Create a user named 'rcb' and add to sales
-adduser rcb         # or: useradd rcb && passwd rcb
-usermod -a -G sales rcb
+### Modify a User
+
+```bash
+sudo usermod -l newname oldname      # Change username
+sudo usermod -d /new/home username   # Change home directory
+sudo usermod -s /bin/zsh username    # Change shell
+sudo usermod -u 2001 username        # Change UID
+sudo usermod -g groupname username   # Change primary group
+sudo usermod -aG group1,group2 username # Add to secondary groups (append)
+```
+
+### Lock/Unlock User Account
+
+```bash
+sudo passwd -l username              # Lock account
+sudo passwd -u username              # Unlock account
 ```
 
 ---
 
-## PASSWORD & AUTH FILES
+## 2. Group Management
 
-* Windows local account hashes stored (path shown): `C:\Windows\System32\config\SAM`
-* Linux password hashes: `/etc/shadow` (only readable by root)
+### Add a Group
 
 ```bash
-# Set or change password for a user
-passwd rcb
-
-# View shadow file (root only)
-cat /etc/shadow
+sudo groupadd groupname              # Create group
+sudo groupadd -g 2000 groupname      # With specific GID
 ```
 
-> If an account has no password configured, it may be represented as `!= NO PASSWORD IS CONFIGURED` in notes — actual representation varies (e.g., `*` or `!` in `/etc/shadow`).
-
----
-
-## SWITCH USER
+### Delete a Group
 
 ```bash
-su kali              # switch to user 'kali' (you will be prompted for password)
+sudo groupdel groupname
 ```
 
----
-
-## PERMISSIONS (r/w/x)
-
-* `r` = read
-* `w` = write
-* `x` = execute
-
-Sample long-style listing: `drwxr-xr-x` (d = directory)
-
-### Numeric (octal) values
-
-* `r` = 4
-* `w` = 2
-* `x` = 1
-
-Examples:
-
-* `rw-` = 4 + 2 = `6`
-* `r-x` = 4 + 1 = `5`
-* `rwx` = 4 + 2 + 1 = `7`
-* `r--` = `4`
-* `-w-` = `2`
-* `--x` = `1`
-* `-wx` = 2 + 1 = `3`
-
-### Converting and examples
+### Add User to Group
 
 ```bash
-# Example mode calculations from notes
-rw--wxr--   -> owner: rw- (6), group: -wx (3), other: r-- (4)  => 634
---xrwxr-x   -> owner: --x (1), group: rwx (7), other: r-x (5)  => 175
+sudo usermod -aG groupname username  # Add to secondary group(s)
+sudo usermod -g groupname username   # Change primary group
+```
 
-# Apply permission
-chmod 634 test
+### Remove User from Group
+
+```bash
+sudo gpasswd -d username groupname   # Remove user from group
+```
+
+### List Group Memberships
+
+```bash
+groups username                      # List groups for user
+id username                          # Show UID, GID, and groups
 ```
 
 ---
 
-## PRACTICAL DIRECTORY TASKS (from your notes)
+## 3. Viewing and Editing User/Group Info
+
+### View User Info
 
 ```bash
-# Create directories and set permissions
-# 1) Create directory test99 and set permission rw-r----x (owner=6, group=4, other=1) -> 641
-mkdir test99 && chmod 641 test99
-
-# 2) Create directory test98 and set permission rwx----wx -> rwx (7), --- (0), -wx (3) => 703
-mkdir test98 && chmod 703 test98
-
-# 3) Create directory test92 and set permission rwx--x-wx
-#    Breakdown: owner=rwx (7), group=--x (1), other=-wx (3) => 713
-mkdir test92 && chmod 713 test92
-
-# 4) Create directory test91 and set permission r--rwx--x
-#    Breakdown: owner=r-- (4), group=rwx (7), other=--x (1) => 471
-mkdir test91 && chmod 471 test91
+cat /etc/passwd                      # List all users
+getent passwd username               # Info for specific user
 ```
 
-> Double-check the numeric values before applying if these are critical — mistakes can lock out access.
-
----
-
-## UGO (User/Group/Other)
-
-* `u` = owner (user)
-* `g` = group
-* `o` = other (everyone else)
-
-Symbols to modify: `+` (add), `-` (remove), `=` (set exactly)
+### View Group Info
 
 ```bash
-# Examples
-chown <username> <dir>       # change owner of <dir>
-chgrp <groupname> <dir>      # change group of <dir>
+cat /etc/group                       # List all groups
+getent group groupname               # Info for specific group
+```
 
-# Create user 'raj', group 'dev', create dir test89 and set owner/group
-adduser raj
-groupadd dev
-mkdir test89
-chown raj test89
-chgrp dev test89
-# or in one command:
-chown raj:dev test89
+### Edit User/Group Files (Advanced)
+
+```bash
+sudo vipw                            # Safely edit /etc/passwd
+sudo vigr                            # Safely edit /etc/group
 ```
 
 ---
 
-## PACKAGE / APPLICATION INSTALLATION (APT)
+## 4. File Permissions & Ownership
 
-Common `apt` commands (Debian/Ubuntu-based systems):
+### Change File Owner/Group
 
 ```bash
-sudo apt update            # refresh package lists
-apt list --installed       # list installed packages (or: apt list)
-apt search vlc             # search for package 'vlc'
-sudo apt install vlc      # install vlc
-sudo apt remove vlc       # remove package but keep config files
-sudo apt purge vlc        # remove package and purge config files
+sudo chown user file                 # Change owner
+sudo chown user:group file           # Change owner and group
+sudo chgrp group file                # Change group only
+```
+
+### Change File Permissions
+
+```bash
+chmod 755 file                       # rwxr-xr-x
+chmod 644 file                       # rw-r--r--
+chmod u+x file                       # Add execute for owner
+chmod g-w file                       # Remove write for group
+```
+
+### Permission Numbers
+
+| Number | Permission | rwx |
+| ------ | ---------- | --- |
+| 7      | rwx        | 111 |
+| 6      | rw-        | 110 |
+| 5      | r-x        | 101 |
+| 4      | r--        | 100 |
+| 3      | -wx        | 011 |
+| 2      | -w-        | 010 |
+| 1      | --x        | 001 |
+| 0      | ---        | 000 |
+
+---
+
+## 5. Special Permissions
+
+### Setuid, Setgid, Sticky Bit
+
+```bash
+chmod u+s file      # setuid (run as file owner)
+chmod g+s file      # setgid (run as group)
+chmod +t dir        # sticky bit (only owner/root can delete in dir)
+```
+
+* **Setuid**: `ls -l` shows `s` in owner: `-rwsr-xr-x`
+* **Setgid**: `ls -l` shows `s` in group: `-rwxr-sr-x`
+* **Sticky**: `ls -ld /tmp` shows `t`: `drwxrwxrwt`
+
+### Sticky Bit Example
+
+#### Add Sticky Bit
+
+```bash
+sudo chmod +t /shared_folder
+ls -ld /shared_folder
+# drwxrwxrwt 2 root root 4096 Sep 30 12:00 /shared_folder
+```
+
+#### Remove Sticky Bit
+
+```bash
+sudo chmod -t /shared_folder
+ls -ld /shared_folder
+# drwxrwxr-x 2 root root 4096 Sep 30 12:00 /shared_folder
+```
+
+**Effect:** Only file/directory owner or root can delete files inside `/shared_folder`.
+
+---
+
+## 6. Private Groups
+
+* **What?**: By default, each user gets a private group (same name as user).
+* **Why?**: Prevents accidental sharing, isolates user files, simplifies permissions.
+
+---
+
+## 7. Permission Resolution Order
+
+1. **Owner**: If you are the file owner, owner permissions apply.
+2. **Group**: If you are in the file’s group, group permissions apply.
+3. **Others**: If neither, "others" permissions apply.
+
+---
+
+## 8. Useful Commands
+
+### Switch User
+
+```bash
+su - username                        # Switch to user (login shell)
+sudo -i                              # Root shell
+```
+
+### List All Users/Groups
+
+```bash
+cut -d: -f1 /etc/passwd              # List usernames
+cut -d: -f1 /etc/group               # List group names
+```
+
+### Find Files by Owner/Group
+
+```bash
+find / -user username                # Files owned by user
+find / -group groupname              # Files owned by group
 ```
 
 ---
 
-## QUICK CHECKLIST (Tasks requested in your notes)
-
-1. Create group `sales` and user `rcb`, add `rcb` to `sales`:
+## 9. Example: Remove User from Group
 
 ```bash
-groupadd sales
-adduser rcb
-usermod -a -G sales rcb
+sudo gpasswd -d bob developers
+# Removes 'bob' from 'developers' group
 ```
-
-2. Create user `raj` and group `dev`, create directory `test89` with owner `raj` and group `dev`:
-
-```bash
-adduser raj
-groupadd dev
-mkdir test89
-chown raj:dev test89
-```
-
-3. Create directories and set permissions (examples provided above).
 
 ---
 
-## NOTES & BEST PRACTICES
+## 10. Troubleshooting
 
-* `adduser` is interactive and usually preferred for creating human users (it creates home directory, sets shell, prompts for password).
-* `useradd` is lower-level; use with flags like `-m` to create home directory, `-s` to set shell, etc.
-* Always run `passwd <username>` to set a password for a new account.
-* Use `sudo` when running administrative commands as non-root.
-* Be careful when using `chmod` and `chown` on system directories — incorrect ownership/permissions can break services.
+* **User not in group after adding?**
+  Log out and back in, or use `newgrp groupname` to refresh group membership.
+* **Permission denied?**
+  Check file owner/group with `ls -l`, and verify your user/group membership with `id`.
 
 ---
 
-*Generated: 29/05*
+## 11. Summary Table
+
+| Command                 | Description             |
+| ----------------------- | ----------------------- |
+| `useradd`               | Add user                |
+| `userdel`               | Delete user             |
+| `usermod`               | Modify user             |
+| `groupadd`              | Add group               |
+| `groupdel`              | Delete group            |
+| `gpasswd -d user group` | Remove user from group  |
+| `passwd`                | Set/change password     |
+| `chown`                 | Change file owner/group |
+| `chmod`                 | Change file permissions |
+| `chgrp`                 | Change file group       |
+| `id`                    | Show user/group IDs     |
+| `groups`                | Show group memberships  |
+| `chmod +t/-t dir`       | Add/remove sticky bit   |
+
+---
+
+**Tip:**
+Always double-check group membership and file permissions with `id` and `ls -l`!
+
+```
+
+I can also make a **ready-to-download `.md` file** with this content if you want. Do you want me to do that?
+```
