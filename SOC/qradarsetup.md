@@ -114,6 +114,8 @@ In IIS logs, the **first IP** is the *web server IP*, and the **second IP** is t
 
 You’ll see the path mentioned (e.g., `C:\Windows\System32\LogFiles\Firewall\pfirewall.log`).
 
+![Firewall Log File Location](images/Screenshot 2025-10-28 at 3.38.24 PM.png)
+
 If access is denied:
 
 * Right-click the file → **Properties → Security → Advanced → Change Owner**
